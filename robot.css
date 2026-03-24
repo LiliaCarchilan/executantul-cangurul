@@ -159,8 +159,40 @@ canvas {
   max-width: 100%;
 }
 #manualControls button,
+#resizeControls button,
+#focusControls button,
 #runControls button {
   min-height: 44px;
+}
+#resizeControls,
+#focusControls {
+  line-height: 1.6;
+}
+#resizeControls {
+  margin-bottom: 8px;
+}
+.resizeRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.resizeLabel {
+  min-width: 135px;
+  text-align: right;
+  color: #444;
+  font-size: 14px;
+}
+#resizeControls button,
+#focusControls button {
+  min-width: 48px;
+  padding: 8px 12px;
+}
+.activeView {
+  border: 1px solid #3a89de;
+  background-color: #3a89de;
+  color: #fff;
 }
 #sensorPanel {
   line-height: 1.6;
@@ -272,14 +304,26 @@ canvas {
     height: 280px !important;
   }
   #manualControls,
+  #resizeControls,
+  #focusControls,
   #runControls,
   #sensorPanel {
     text-align: left !important;
   }
   #manualControls button,
+  #resizeControls button,
+  #focusControls button,
   #runControls button {
     width: calc(50% - 12px);
     margin: 6px;
+  }
+  .resizeRow {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .resizeLabel {
+    min-width: 110px;
+    text-align: left;
   }
   #runButton,
   #resetButton,
@@ -307,9 +351,18 @@ canvas {
     font-size: 18px;
   }
   #manualControls button,
+  #resizeControls button,
+  #focusControls button,
   #runControls button {
     width: 100%;
     margin: 6px 0;
+  }
+  .resizeRow {
+    display: block;
+  }
+  .resizeLabel {
+    display: block;
+    margin-bottom: 4px;
   }
   #capacity {
     display: inline-block;

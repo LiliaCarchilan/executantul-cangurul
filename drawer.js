@@ -120,11 +120,25 @@ function getLevel() {
 var editor;
 var blocklyArea;
 var blocklyDiv;
+var uiLayout = {
+  stageScale: 1,
+  blocklyMinHeight: 460,
+  editorHeight: 400,
+  focus: 'all'
+};
+
+function clampValue( value, minValue, maxValue ) {
+  return Math.min( Math.max( value, minValue ), maxValue );
+}
+
+function roundToStep( value, step ) {
+  return Math.round( value / step ) * step;
+}
 
 function adjustBlocklyArea() {
   var rect = workspace.getBlocksBoundingBox();
   var height = rect.bottom - rect.top;
-  blocklyArea.style.height = Math.max( height + 20, 453 ) + 'px';
+  blocklyArea.style.height = Math.max( height + 20, uiLayout.blocklyMinHeight ) + 'px';
   onResize();
 }
 
@@ -214,6 +228,7 @@ function initRobot() {
   editor.session.setMode("ace/mode/python");
   editor.session.setUseWorker(false);  // disable syntax check
   editor.setReadOnly(true);
+  applyUserLayout();
 
   drawMap();
 
@@ -1413,6 +1428,86 @@ function manualRotire() {
   doDrawerTurn(-90);
 }
 
+function setFocusButtonState( buttonId, isActive ) {
+  var button = document.getElementById( buttonId );
+  if( ! button ) return;
+  if( button.classList ) {
+    if( isActive ) button.classList.add('activeView');
+    else button.classList.remove('activeView');
+  }
+  else if( isActive ) addClass( buttonId, 'activeView' );
+  else removeClass( buttonId, 'activeView' );
+}
+
+function refreshLayoutIndicators() {
+  var stageSizeValue = document.getElementById('stageSizeValue');
+  var blocklySizeValue = document.getElementById('blocklySizeValue');
+  var editorSizeValue = document.getElementById('editorSizeValue');
+
+  if( stageSizeValue ) stageSizeValue.textContent = Math.round( uiLayout.stageScale * 100 ) + '%';
+  if( blocklySizeValue ) blocklySizeValue.textContent = uiLayout.blocklyMinHeight + ' px';
+  if( editorSizeValue ) editorSizeValue.textContent = uiLayout.editorHeight + ' px';
+
+  setFocusButtonState( 'focusAllButton', uiLayout.focus == 'all' );
+  setFocusButtonState( 'focusExecutionButton', uiLayout.focus == 'execution' );
+  setFocusButtonState( 'focusBlocksButton', uiLayout.focus == 'blocks' );
+  setFocusButtonState( 'focusCodeButton', uiLayout.focus == 'code' );
+}
+
+function applyUserLayout() {
+  var leftPane = document.getElementById('leftPane');
+  var rightPane = document.getElementById('rightPane');
+  var editorPane = document.getElementById('editorPane');
+  var visualization = document.getElementById('visualization');
+  var displayCanvas = document.getElementById('display');
+  var editorNode = document.getElementById('editor');
+
+  if( ! leftPane || ! rightPane || ! editorPane || ! visualization || ! displayCanvas || ! blocklyArea || ! blocklyDiv || ! editorNode )
+    return;
+
+  var showExecution = (uiLayout.focus == 'all' || uiLayout.focus == 'execution');
+  var showBlocks = (uiLayout.focus == 'all' || uiLayout.focus == 'blocks');
+  var showCode = (uiLayout.focus == 'all' || uiLayout.focus == 'code');
+
+  leftPane.style.display = showExecution ? '' : 'none';
+  rightPane.style.display = showBlocks ? '' : 'none';
+  editorPane.style.display = showCode ? '' : 'none';
+  blocklyDiv.style.display = showBlocks ? 'block' : 'none';
+
+  var stageSize = Math.round( MAZE_WIDTH * uiLayout.stageScale );
+  visualization.style.width = stageSize + 'px';
+  visualization.style.height = stageSize + 'px';
+  displayCanvas.style.width = stageSize + 'px';
+  displayCanvas.style.height = stageSize + 'px';
+
+  editorNode.style.height = uiLayout.editorHeight + 'px';
+
+  adjustBlocklyArea();
+  refreshLayoutIndicators();
+  if( showBlocks ) onResize();
+  if( editor && typeof editor.resize == 'function' ) editor.resize();
+}
+
+function resizeStage( delta ) {
+  uiLayout.stageScale = clampValue( roundToStep( uiLayout.stageScale + delta, 0.1 ), 0.6, 1.8 );
+  applyUserLayout();
+}
+
+function resizeBlockly( delta ) {
+  uiLayout.blocklyMinHeight = clampValue( uiLayout.blocklyMinHeight + delta, 280, 1200 );
+  applyUserLayout();
+}
+
+function resizeEditor( delta ) {
+  uiLayout.editorHeight = clampValue( uiLayout.editorHeight + delta, 180, 900 );
+  applyUserLayout();
+}
+
+function setLayoutFocus( focusMode ) {
+  uiLayout.focus = focusMode;
+  applyUserLayout();
+}
+
 function scheduleDrawerShow( blockId, state ) {
   addStepPause( blockId );
   programCode.push( [ blockId, 'show', state ] );
@@ -1581,6 +1676,11 @@ function robotHTML( header ) {
 '    <button type="button" title="Comanda manuala SALT" onclick="manualSalt();">SALT</button>' +
 '    <button type="button" title="Comanda manuala ROTIRE" onclick="manualRotire();">ROTIRE</button>' +
 '  </div>' +
+'  <div id="resizeControls" style="text-align:right; margin-bottom:6px;">' +
+'    <div class="resizeRow"><span class="resizeLabel">Executie <span id="stageSizeValue">100%</span></span><button type="button" onclick="resizeStage(-0.1);">-</button><button type="button" onclick="resizeStage(0.1);">+</button></div>' +
+'    <div class="resizeRow"><span class="resizeLabel">Blocuri <span id="blocklySizeValue">460 px</span></span><button type="button" onclick="resizeBlockly(-80);">-</button><button type="button" onclick="resizeBlockly(80);">+</button></div>' +
+'    <div class="resizeRow"><span class="resizeLabel">Cod <span id="editorSizeValue">400 px</span></span><button type="button" onclick="resizeEditor(-60);">-</button><button type="button" onclick="resizeEditor(60);">+</button></div>' +
+'  </div>' +
 '  <div id="runControls" style="text-align:right;">' +
 '    <button id="stepButton" title="Executa programul pas cu pas" onclick="runCode(true);">' +
 '      <img src="Media/1x1.gif" class="step icon21">&nbsp;Pas' +
@@ -1594,6 +1694,12 @@ function robotHTML( header ) {
 '  <div id="sensorPanel" style="margin-top:8px; text-align:right; color:#444; font-size:13px;">' +
 '    <span id="sensorLine">E_LINIE: FALS</span><br>' +
 '    <span id="sensorBorder">E_MARGINE: FALS</span>' +
+'  </div>' +
+'  <div id="focusControls" style="margin-top:8px; text-align:right;">' +
+'    <button id="focusAllButton" type="button" title="Afiseaza toate zonele" onclick="setLayoutFocus(\'all\');">Toate</button>' +
+'    <button id="focusExecutionButton" type="button" title="Afiseaza doar executia" onclick="setLayoutFocus(\'execution\');">Executie</button>' +
+'    <button id="focusBlocksButton" type="button" title="Afiseaza doar blocurile" onclick="setLayoutFocus(\'blocks\');">Blocuri</button>' +
+'    <button id="focusCodeButton" type="button" title="Afiseaza doar codul" onclick="setLayoutFocus(\'code\');">Cod</button>' +
 '  </div>' +
 '  </td></tr></table>' +
 '  <div id="counters"></div>' +
